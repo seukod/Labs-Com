@@ -59,6 +59,7 @@ void rellenarAleatorio(uint8_t *buf, size_t n)
 bool enviarClaveAES(const uint8_t *claveAES)
 {
   uint8_t claveCif[256];
+  uint32_t t0 = millis();               // <<< MEDICION >>>
   int ret =
 #if MBEDTLS_VERSION_MAJOR >= 3
     mbedtls_rsa_pkcs1_encrypt(&rsaPub, mbedtls_ctr_drbg_random, &drbg,
@@ -67,10 +68,13 @@ bool enviarClaveAES(const uint8_t *claveAES)
     mbedtls_rsa_pkcs1_encrypt(&rsaPub, mbedtls_ctr_drbg_random, &drbg,
                               MBEDTLS_RSA_PUBLIC, 16, claveAES, claveCif);
 #endif
+  uint32_t tRSA = millis() - t0;        // <<< MEDICION >>>
   if(ret != 0){
     Serial.printf("Error cifrando clave AES (ret=-0x%04X)\n", -ret);
     return false;
   }
+  Serial.printf("[TIEMPO] RSA-2048 cifrar clave AES (16 B): %lu ms\n",
+                (unsigned long)tRSA);
 
   // 256 B no caben en una trama -> 2 fragmentos de 128 B
   for(uint8_t f = 0; f < 2; f++){
@@ -116,9 +120,14 @@ bool enviarMensaje(const uint8_t *claveAES, const char *texto)
   mbedtls_aes_context aes;
   mbedtls_aes_init(&aes);
   mbedtls_aes_setkey_enc(&aes, claveAES, 128);
+  uint32_t a0 = micros();                // <<< MEDICION >>>
   mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_ENCRYPT, total,
                         iv, claro, pkt.payload);
+  uint32_t tAES = micros() - a0;         // <<< MEDICION >>>
   mbedtls_aes_free(&aes);
+
+  Serial.printf("[TIEMPO] AES-128-CBC cifrar %u B: %lu us\n",
+                (unsigned)total, (unsigned long)tAES);
 
   if(esp_now_send(broadcast, (uint8_t*)&pkt, sizeof(pkt)) != ESP_OK){
     Serial.println("Fallo envio mensaje");

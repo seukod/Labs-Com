@@ -90,6 +90,7 @@ void recuperarClaveAES()
   size_t olen = 0;
   uint8_t salida[256];
 
+  uint32_t t0 = millis();               // <<< MEDICION >>>
   int ret =
 #if MBEDTLS_VERSION_MAJOR >= 3
     mbedtls_rsa_pkcs1_decrypt(&rsa, mbedtls_ctr_drbg_random, &drbg,
@@ -99,6 +100,7 @@ void recuperarClaveAES()
                               MBEDTLS_RSA_PRIVATE, &olen,
                               bufClaveCif, salida, sizeof(salida));
 #endif
+  uint32_t tRSA = millis() - t0;        // <<< MEDICION >>>
 
   if(ret != 0 || olen != 16){
     Serial.printf("Error descifrando clave AES (ret=-0x%04X, len=%u)\n",
@@ -110,6 +112,8 @@ void recuperarClaveAES()
   memcpy(claveAES, salida, 16);
   claveAESlista = true;
   Serial.println("[OK] Clave AES recuperada via RSA");
+  Serial.printf("[TIEMPO] RSA-2048 descifrar clave AES: %lu ms\n",
+                (unsigned long)tRSA);
 }
 
 //----------------------------------------------------
@@ -132,9 +136,14 @@ void procesarDatos(const Paquete *pkt)
   mbedtls_aes_context aes;
   mbedtls_aes_init(&aes);
   mbedtls_aes_setkey_dec(&aes, claveAES, 128);
+  uint32_t a0 = micros();                // <<< MEDICION >>>
   mbedtls_aes_crypt_cbc(&aes, MBEDTLS_AES_DECRYPT, pkt->longitud,
                         iv, pkt->payload, claro);
+  uint32_t tAES = micros() - a0;         // <<< MEDICION >>>
   mbedtls_aes_free(&aes);
+
+  Serial.printf("[TIEMPO] AES-128-CBC descifrar %u B: %lu us\n",
+                (unsigned)pkt->longitud, (unsigned long)tAES);
 
   int n = quitarPKCS7(claro, pkt->longitud);
   if(n < 0){
