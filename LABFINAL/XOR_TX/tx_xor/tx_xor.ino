@@ -14,7 +14,7 @@ const uint8_t CLAVE[16] = {
 
 // <<< CAMBIO >>>
 // Reemplazar por la MAC del ESP32 receptor
-uint8_t macReceptor[] = {0x8C, 0x94, 0xDF, 0x4C, 0xBC, 0xF0};
+uint8_t macReceptor[] = {0x8C, 0x94, 0xDF, 0x8F, 0x31, 0x84};
 
 // <<< CAMBIO >>>
 // Número de secuencia
